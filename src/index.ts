@@ -143,7 +143,7 @@ module.exports = {
         // the document.ready callback. Instead we can explicitly render the diagrams
         { content: 'mermaid.initialize({ startOnLoad: false}); (async () => { await mermaid.run(); })();' }
     ],
-    launch-options: '{ "args": ["--no-sandbox"] }'
+    launch-options: { "args": ["--no-sandbox"] }
 };`;
 
     writeFileSync(configFileName, config);
