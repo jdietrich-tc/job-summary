@@ -142,10 +142,13 @@ module.exports = {
         // For some reason, mermaid initialize doesn't render diagrams as it should. It's like it's missing
         // the document.ready callback. Instead we can explicitly render the diagrams
         { content: 'mermaid.initialize({ startOnLoad: false}); (async () => { await mermaid.run(); })();' }
-    ]
+    ],
+    launch-options: { "args": ["--no-sandbox"] }
 };`;
 
     writeFileSync(configFileName, config);
+    info(readFileSync(configFileName, 'utf8'));
+
 }
 
 run();
