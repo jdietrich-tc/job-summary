@@ -147,6 +147,8 @@ module.exports = {
 };`;
 
     writeFileSync(configFileName, config);
+    info(readFileSync(configFileName, 'utf8'));
+
 }
 
 run();
