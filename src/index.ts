@@ -62,6 +62,7 @@ const run = async (): Promise<void> => {
   debug(`Job summary file directory: ${dir}`);
   const JobSummaryFiles = readdirSync(dir);
   debug(`Job files: ${JobSummaryFiles}`);
+
   for (const file of JobSummaryFiles) {
     const fileObj = path.parse(file);
     if (fileObj.base.startsWith('step_summary_') && fileObj.base.endsWith('-scrubbed')) {
@@ -76,12 +77,52 @@ const run = async (): Promise<void> => {
   endGroup();
   setOutput('job-summary', jobSummary);
 
-  if (input.createMd) {
-    writeFileSync(`./${mdFile}`, jobSummary);
-  }
+  // content needed for all output formats
+  writeFileSync(`./${mdFile}`, jobSummary);
   
   const configFileName = '_config.js';
-  // https://gist.github.com/danishcake/d045c867594d6be175cb394995c90e2c#file-readme-md
+  createConfigFile(configFileName);
+
+  if (input.createPdf) {
+    execSync(`npm i -g md-to-pdf`);
+    execSync(`md-to-pdf --config-file ./${configFileName} ./${mdFile}`);
+    unlinkSync(configFileName);
+    info('PDF generated successfully');
+
+    setOutput('pdf-file', path.resolve(pdfFile));
+
+    if (input.createMdArtifact) {
+      const artifact = new DefaultArtifactClient()
+      await artifact.uploadArtifact('md', [mdFile], '.')
+    }
+  }
+
+  if (input.createHtml) {
+    execSync(`md-to-pdf --config-file ./${configFileName} ./${mdFile} --as-html`);
+    unlinkSync(configFileName);
+    info('HTML generated successfully');
+
+    setOutput('html-file', path.resolve(htmlFile));
+    setOutput('job-summary-html', readFileSync(htmlFile, 'utf8'));
+
+    if (input.createHtmlArtifact) {
+      const artifact = new DefaultArtifactClient()
+      await artifact.uploadArtifact('html', [htmlFile], '.')
+    }
+  }
+
+  if (input.createMd) {
+    setOutput('md-file', path.resolve(mdFile));
+
+    if (input.createMdArtifact) {
+      const artifact = new DefaultArtifactClient()
+      await artifact.uploadArtifact('md', [mdFile], '.')
+    }
+  }
+};
+
+const createConfigFile = (configFileName) => {
+
   const config = `// A marked renderer for mermaid diagrams
 const renderer = {
     code(code, infostring) {
@@ -103,38 +144,8 @@ module.exports = {
         { content: 'mermaid.initialize({ startOnLoad: false}); (async () => { await mermaid.run(); })();' }
     ]
 };`;
-  execSync(`npm i -g md-to-pdf`);
-  writeFileSync(configFileName, config);
-  execSync(`md-to-pdf --config-file ./${configFileName} ./${mdFile}`);
-  info('PDF generated successfully');
-  execSync(`md-to-pdf --config-file ./${configFileName} ./${mdFile} --as-html`);
-  info('HTML generated successfully');
-  unlinkSync(configFileName);
 
-  setOutput('job-summary-html', readFileSync(htmlFile, 'utf8'));
-
-  if (input.createPdfArtifact) {
-    const artifact = new DefaultArtifactClient()
-    await artifact.uploadArtifact('pdf', [pdfFile], '.')
-  }
-
-  if (input.createMdArtifact) {
-    const artifact = new DefaultArtifactClient()
-    await artifact.uploadArtifact('md', [mdFile], '.')
-  }
-
-  if (input.createHtmlArtifact) {
-    const artifact = new DefaultArtifactClient()
-    await artifact.uploadArtifact('html', [htmlFile], '.')
-  }
-
-  if (!input.createMd) unlinkSync(pdfFile);
-  if (!input.createPdf) unlinkSync(pdfFile);
-  if (!input.createHtml) unlinkSync(htmlFile);
-
-  setOutput('pdf-file', path.resolve(pdfFile));
-  setOutput('md-file', path.resolve(mdFile));
-  setOutput('html-file', path.resolve(htmlFile));
-};
+    writeFileSync(configFileName, config);
+}
 
 run();
